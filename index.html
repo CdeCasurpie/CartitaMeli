@@ -1,0 +1,686 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.6.0/dist/confetti.browser.min.js"></script>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Ubuntu:ital,wght@0,300;0,400;0,500;0,700;1,300;1,400;1,500;1,700&display=swap');
+
+        * {
+            box-sizing: border-box;
+            font-family: 'Ubuntu', sans-serif;
+        }
+
+        body {
+            margin: 0;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            background-color: #8b0000;
+            overflow: hidden;
+        }
+
+        #snow-canvas {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        #container {
+            width: 900px;
+            height: 500px;
+            background-color: #b30000;
+            border-radius: 20px;
+            position: relative;
+            overflow: hidden;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.1);
+            z-index: 1;
+        }
+
+        #curve-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            z-index: 2;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #content-container {
+            width: 100%;
+            height: 100%;
+            position: absolute;
+            opacity: 0;
+            background: rgba(0,0,0,0.0);
+            transition: opacity 0.5s;
+            z-index: 1;
+            border-radius: 20px;
+            box-shadow: inset 0 0 20px rgba(0,0,0,0.1);
+        }
+
+        .shutter {
+            position: absolute;
+            background: #8b0000;
+            transition: transform 0.5s ease-in-out;
+            z-index: 3;
+            box-shadow: 0 0 20px rgba(0,0,0,0.05);
+        }
+
+        #shutter-left, #shutter-right {
+            width: 50%;
+            height: 100%;
+            top: 0;
+        }
+
+        #shutter-left {
+            left: 0;
+            transform: translateX(-100%);
+        }
+
+        #shutter-right {
+            right: 0;
+            transform: translateX(100%);
+        }
+
+        .closing #shutter-left {
+            transform: translateX(0);
+        }
+
+        .closing #shutter-right {
+            transform: translateX(0);
+        }
+
+        .opening #shutter-left {
+            transform: translateX(-100%);
+        }
+
+        .opening #shutter-right {
+            transform: translateX(100%);
+        }
+
+        #draggable {
+            cursor: pointer;
+            pointer-events: all;
+        }
+
+        #draggable:hover .hitbox {
+            opacity: 1 !important;
+        }
+
+        .hitbox {
+            pointer-events: all;
+        }
+
+        #card-content {
+            height: 100%;
+            padding: 20px;
+            text-align: center;
+            color: #ffffff;
+        }
+
+        #card-content * {
+            color: #ffffff;
+            text-shadow: 0 0px 5px rgba(255, 255, 255, 1);
+        }
+
+        .loading-text {
+            position: absolute;
+            bottom: 30px;
+            width: 100%;
+            text-align: center;
+            color: #ffffff;
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        .slider-container {
+    position: relative;
+    width: 100%;
+    height: 100%;
+    overflow: hidden;
+    background: rgba(255, 255, 255, 0);
+    border-radius: 20px;
+    padding: 2rem;
+}
+
+.slider-wrapper {
+    display: flex;
+    transition: transform 0.5s ease-in-out;
+    height: 100%;
+}
+
+.slide {
+    min-width: 100%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 1.5rem;
+    padding: 0 1rem;
+}
+
+.slide h2, .slide h3, .slide h4 {
+    margin-bottom: 14px;
+    margin-top: 0;
+    max-width: 600px;
+}
+
+.slide img {
+    max-width: 300px;
+    box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    border: 10px solid #fff;
+    border-bottom: 30px solid #fff;
+}
+
+.slide p {
+    font-size: 1.125rem;
+    text-align: center;
+    max-width: 600px;
+    margin: 0;
+}
+
+.slider-button {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    background: #8b0000;
+    color: white;
+    border: none;
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    cursor: pointer;
+    font-size: 1.25rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: background-color 0.3s;
+}
+
+.slider-button:hover {
+    background: #b30000;
+}
+
+.slider-button.prev {
+    left: 1rem;
+}
+
+.slider-button.next {
+    right: 1rem;
+}
+
+.slider-dots {
+    position: absolute;
+    bottom: 1rem;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.5rem;
+}
+
+.dot {
+    width: 10px;
+    height: 10px;
+    border-radius: 50%;
+    background: #ddd;
+    cursor: pointer;
+    transition: background-color 0.3s;
+}
+
+.dot.active {
+    background: #8b0000;
+}
+
+.explosion-btn {
+    background: #8b0000;
+    color: white;
+    border: none;
+    padding: 0.5rem 1rem;
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 1rem;
+    transition: background-color 0.3s, transform 0.3s;
+}
+
+.explosion-btn:hover {
+    transform: scale(1.05);
+}
+
+.explosion-btn:active {
+    background: #8b0000;
+    transform: scale(0.95);
+}
+
+
+    </style>
+</head>
+<body>
+    <audio id="bgMusic" loop>
+        <source src="./musiquita.mp3" type="audio/mp3">
+        Tu navegador no soporta el elemento de audio.
+    </audio>
+    <canvas id="snow-canvas"></canvas>
+    <div id="container">
+        <div id="curve-container">
+            <svg width="600" height="400">
+                <defs>
+                    <filter id="glow">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <path id="curvePath" fill="none" stroke="#ff9999" stroke-width="4" filter="url(#glow)"></path>
+                <path id="progressPath" fill="none" stroke="#ffffff" stroke-width="4" filter="url(#glow)"></path>
+                <!-- Puntos de ciudades -->
+                <g class="city-markers" style="font-family: 'Ubuntu', sans-serif; font-weight: 500;">
+                    <circle cx="50" cy="200" r="4" fill="white" filter="url(#glow)"/>
+                    <text x="50" y="180" text-anchor="middle" fill="white" filter="url(#glow)">Lima</text>
+                    <circle cx="550" cy="200" r="4" fill="white" filter="url(#glow)"/>
+                    <text x="550" y="180" text-anchor="middle" fill="white" filter="url(#glow)">Cusco</text>
+                </g>
+                <g id="draggable" transform="translate(0, 0)">
+                    <!-- Hitbox visible al hover -->
+                    <circle cx="0" cy="0" r="20" 
+                            fill="transparent" 
+                            stroke="rgba(255,255,255,0.3)"
+                            stroke-width="2"
+                            style="opacity: 0; transition: opacity 0.3s"
+                            class="hitbox"/>
+                    <!-- Avión centrado -->
+                    <path transform="translate(-12, -12)" 
+                          d="M17.8 19.2L16 11L19.5 7.5C21 6 21.5 4 21 3C20 2.5 18 3 16.5 4.5L13 8L4.8 6.2C4.3 6.1 3.9 6.3 3.7 6.7L3.4 7.2C3.2 7.7 3.3 8.2 3.7 8.5L9 12L7 15H4L3 16L6 18L8 21L9 20V17L12 15L15.5 20.3C15.8 20.7 16.3 20.8 16.8 20.6L17.3 20.4C17.7 20.1 17.9 19.7 17.8 19.2Z" 
+                          stroke="white" 
+                          stroke-width="2" 
+                          stroke-linecap="round" 
+                          stroke-linejoin="round"
+                          fill="white"/>
+                </g>
+            </svg>
+            <div class="loading-text">Arrastra para abrir tu carta</div>
+        </div>
+        <div id="content-container">
+            <div id="card-content">
+                <div class="slider-container">
+                    <div class="slider-wrapper">
+                        <div class="slide">
+                            <h2>¡Feliz Navidad Botita :3!</h2>
+
+                            <p>Sbs bota? Solo quiero escribirte algo lindo para navidad.</p>
+                            <p>Tipo enserio no sé que escribirte. No creo que sea bueno con palabras para una dedicatoria, pero he estado leyendo un chat para tí que hace tiempo no leía y me he puesto feliz. </p>
+                            <p>Amo saber que en tanto tiempo mis sentimientos por ti solo han crecido y crecido. Me encanta cada cosa que pasamos juntos, tipo son cosas que nunca imaginaría, son cosas que me ayudan a crecer y salir de la rutina como siempre contigo :3.</p>  
+                            
+                        </div>
+                        <div class="slide">
+                            <h3>¿Sabes que amo no? Amo que contigo cada día es vida. Amo vivir. Y amo vivir contigo</h3>
+                            <img src="imagen1.jpg" alt="Imagen 1">
+                        </div>
+                        <div class="slide">
+                            <div
+                                style="width: 100%; height: 100%; position: relative; display: flex; justify-content: space-around;">
+                                <p
+                                    style="width: 40%; height: 100%; display: flex; justify-content: center; align-items: center;"
+                                >Ese día que te fuiste a Cusco estaba muy feiz y triste a la vez. No quería que te vayas pero quería mucho q veas a tu familia. Era una combinación rara. Tenía miedo, pero también sentía paz. Amo tener miedo, me hace darme cuenta lo importante que eres en mi vida. Tu mi niña tan querida, y yo chico tan sensible.</p>
+                                <img src="imagen2.jpg" alt="Imagen 2">
+                            </div>
+                        </div>
+                        <div class="slide">
+                            <div
+                                style="width: 100%; height: 100%; position: relative; display: flex; justify-content: space-around;">
+                                <img src="imagen3.jpg" alt="Imagen 2">
+                                <p
+                                style="width: 40%; height: 100%; display: flex; justify-content: center; align-items: center;"
+                                >Y hay veces que luego de estar triste solo me pongo a ver fotos tuyas y veo tu linda carita. Veo tu carita triste y me siento tonto. Osea que me pasa? Cómo puedo estar llorando si mi bota está triste. Debo secarme las lágrimas e ir a darte un abrazo. No importa si me gritas, si me miras feo, o si me rechazas. Yo debo darte un abrazo y consentirte. Pq lo mereces, siempre. :( (te quiero)</p>
+                                
+                            </div>
+                        </div>
+                        <div class="slide">
+                            <div
+                                style="width: 100%; height: 100%; position: relative; display: flex; justify-content: space-around;">
+                                <img src="imagen4.jpg" alt="Imagen 2">
+                                <p
+                                style="width: 40%; height: 100%; display: flex; justify-content: center; align-items: center;"
+                                >Y entres tantas cosas botita. Sin improtar lo que pase, sin importar que diga el puto mundo. O sin importar que tan lejos estés. Quiero ser tuyo. Y quiero una feliz navidad, una feliz navidad contigo.</p>
+                            </div>
+                        </div>
+                        <div class="slide">
+                            <h1>Feliz navidad! :D</h1>
+                            <button class="explosion-btn">
+                                ¡Explosión!
+                            </button>
+                        </div>
+                    </div>
+                    <button class="slider-button prev">❮</button>
+                    <button class="slider-button next">❯</button>
+                    <div class="slider-dots"></div>
+                </div>
+            </div>
+        </div>
+        <div id="shutter-left" class="shutter"></div>
+        <div id="shutter-right" class="shutter"></div>
+    </div>
+
+    <script>
+        // Configuración de la nieve
+        const canvas = document.getElementById('snow-canvas');
+        const ctx = canvas.getContext('2d');
+        
+        function resizeCanvas() {
+            canvas.width = window.innerWidth;
+            canvas.height = window.innerHeight;
+        }
+        
+        resizeCanvas();
+        window.addEventListener('resize', resizeCanvas);
+
+        const snowflakes = [];
+        const SNOWFLAKE_COUNT = 100;
+
+        class Snowflake {
+            constructor() {
+                this.reset();
+            }
+
+            reset() {
+                this.x = Math.random() * canvas.width;
+                this.y = Math.random() * -canvas.height;
+                this.size = Math.random() * 3 + 1;
+                this.speed = Math.random() * 2 + 0.5;
+                this.opacity = Math.random() * 0.5 + 0.3;
+            }
+
+            update() {
+                this.y += this.speed;
+                this.x += Math.sin(this.y / 30) * 0.5;
+
+                if (this.y > canvas.height) {
+                    this.reset();
+                }
+            }
+
+            draw() {
+                ctx.beginPath();
+                ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
+                ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
+                ctx.fill();
+            }
+        }
+
+        for (let i = 0; i < SNOWFLAKE_COUNT; i++) {
+            snowflakes.push(new Snowflake());
+        }
+
+        function animateSnow() {
+            ctx.clearRect(0, 0, canvas.width, canvas.height);
+            
+            snowflakes.forEach(snowflake => {
+                snowflake.update();
+                snowflake.draw();
+            });
+            
+            requestAnimationFrame(animateSnow);
+        }
+
+        animateSnow();
+
+        // Configuración de la curva y el avión
+        const INITIAL_ROTATION = 45; // Rotación inicial del avión en grados
+
+        const startPoint = {x: 50, y: 200};
+        const endPoint = {x: 550, y: 200};
+        const control1 = {
+            x: startPoint.x + Math.random() * 200,
+            y: startPoint.y + (Math.random() - 0.5) * 300
+        };
+        const control2 = {
+            x: endPoint.x - Math.random() * 200,
+            y: endPoint.y + (Math.random() - 0.5) * 300
+        };
+
+        const curvePath = document.getElementById('curvePath');
+        const pathD = `M ${startPoint.x} ${startPoint.y} C ${control1.x} ${control1.y}, ${control2.x} ${control2.y}, ${endPoint.x} ${endPoint.y}`;
+        curvePath.setAttribute('d', pathD);
+        
+        const progressPath = document.getElementById('progressPath');
+        progressPath.setAttribute('d', pathD);
+        const totalLength = curvePath.getTotalLength();
+        progressPath.style.strokeDasharray = totalLength;
+        progressPath.style.strokeDashoffset = totalLength;
+
+        const draggable = document.getElementById('draggable');
+        const container = document.getElementById('container');
+        let isDragging = false;
+        let currentT = 0;
+        let currentPoint = null;
+
+        function getPointAtLength(length) {
+            const point = curvePath.getPointAtLength(length);
+            return {x: point.x, y: point.y};
+        }
+
+        function getTangentAngle(length) {
+            const delta = 1;
+            const p1 = curvePath.getPointAtLength(length);
+            const p2 = curvePath.getPointAtLength(length + delta);
+            return Math.atan2(p2.y - p1.y, p2.x - p1.x) * 180 / Math.PI + INITIAL_ROTATION;
+        }
+
+        function updatePosition(length) {
+            const point = getPointAtLength(length);
+            const angle = getTangentAngle(length);
+            
+            draggable.setAttribute('transform', 
+                `translate(${point.x}, ${point.y}) rotate(${angle})`);
+            
+            progressPath.style.strokeDashoffset = totalLength - length;
+
+            if (length >= totalLength * 0.98) {
+                onLoaded();
+            }
+        }
+
+        let hasLoaded = false;
+
+        function onLoaded() {
+            if (!hasLoaded) {
+                hasLoaded = true;
+                container.classList.add('closing');
+                
+                // Iniciar la música cuando se abre la carta
+                const bgMusic = document.getElementById('bgMusic');
+                bgMusic.volume = 0.2; // Ajusta el volumen (0.0 a 1.0)
+                bgMusic.play().catch(error => {
+                    console.log("Reproducción automática bloqueada por el navegador");
+                });
+                
+                setTimeout(() => {
+                    document.getElementById('curve-container').style.display = 'none';
+                    document.getElementById('content-container').style.opacity = '1';
+                    
+                    setTimeout(() => {
+                        container.classList.remove('closing');
+                        container.classList.add('opening');
+                    }, 1000);
+                }, 500);
+            }
+        }
+
+        draggable.addEventListener('mousedown', (e) => {
+            isDragging = true;
+            e.preventDefault();
+        });
+
+        document.addEventListener('mousemove', (e) => {
+            if (!isDragging) return;
+
+            const svgRect = curvePath.getBoundingClientRect();
+            const mouseX = e.clientX - svgRect.left;
+            const mouseY = e.clientY - svgRect.top;
+
+            let closestLength = 0;
+            let minDistance = Infinity;
+            
+            for (let i = currentPoint || 0; i <= totalLength; i += 5) {
+                const point = curvePath.getPointAtLength(i);
+                const dx = point.x - mouseX;
+                const dy = point.y - mouseY;
+                const distance = Math.sqrt(dx * dx + dy * dy);
+                
+                if (distance < minDistance) {
+                    minDistance = distance;
+                    closestLength = i;
+                }
+            }
+
+            if (closestLength >= (currentPoint || 0)) {
+                currentPoint = closestLength;
+                updatePosition(closestLength);
+            }
+        });
+
+        document.addEventListener('mouseup', () => {
+            isDragging = false;
+        });
+
+        updatePosition(0);
+    </script>
+
+    <script>
+        // Configuración del slider
+function setupSlider() {
+    const sliderWrapper = document.querySelector('.slider-wrapper');
+    const slides = document.querySelectorAll('.slide');
+    const prevButton = document.querySelector('.slider-button.prev');
+    const nextButton = document.querySelector('.slider-button.next');
+    const dotsContainer = document.querySelector('.slider-dots');
+    let currentSlide = 0;
+
+    // Crear dots
+    slides.forEach((_, index) => {
+        const dot = document.createElement('div');
+        dot.classList.add('dot');
+        if (index === 0) dot.classList.add('active');
+        dot.addEventListener('click', () => goToSlide(index));
+        dotsContainer.appendChild(dot);
+    });
+
+    const dots = document.querySelectorAll('.dot');
+
+    function updateDots() {
+        dots.forEach((dot, index) => {
+            dot.classList.toggle('active', index === currentSlide);
+        });
+    }
+
+    function goToSlide(index) {
+        currentSlide = index;
+        sliderWrapper.style.transform = `translateX(-${currentSlide * 100}%)`;
+        updateDots();
+    }
+
+    function nextSlide() {
+        currentSlide = (currentSlide + 1) % slides.length;
+        goToSlide(currentSlide);
+    }
+
+    function prevSlide() {
+        currentSlide = (currentSlide - 1 + slides.length) % slides.length;
+        goToSlide(currentSlide);
+    }
+
+    prevButton.addEventListener('click', prevSlide);
+    nextButton.addEventListener('click', nextSlide);
+}
+
+// Inicializar el slider cuando se muestre el contenido
+const contentContainer = document.getElementById('content-container');
+const observer = new MutationObserver((mutations) => {
+    mutations.forEach((mutation) => {
+        if (mutation.type === 'attributes' && mutation.attributeName === 'style') {
+            if (contentContainer.style.opacity === '1') {
+                setupSlider();
+                observer.disconnect();
+            }
+        }
+    });
+});
+
+observer.observe(contentContainer, { attributes: true });
+    </script>
+
+
+<script>
+    // Configuración del botón de explosión
+document.querySelector('.explosion-btn').addEventListener('click', () => {
+    // Explosión de confeti desde el centro
+    confetti({
+        particleCount: 100,
+        spread: 160,
+        origin: { y: 0.6 }
+    });
+
+    // Explosión de confeti desde la izquierda
+    confetti({
+        particleCount: 50,
+        angle: 60,
+        spread: 55,
+        origin: { x: 0 }
+    });
+
+    // Explosión de confeti desde la derecha
+    confetti({
+        particleCount: 50,
+        angle: 120,
+        spread: 55,
+        origin: { x: 1 }
+    });
+
+    // Aumentar la cantidad de copos de nieve temporalmente
+    const originalCount = SNOWFLAKE_COUNT;
+    for(let i = 0; i < 50; i++) {
+        snowflakes.push(new Snowflake());
+    }
+
+    // Después de 5 segundos, volver a la cantidad normal de copos
+    setTimeout(() => {
+        snowflakes.splice(originalCount);
+    }, 5000);
+});
+
+// Función para crear un efecto de cañón de confeti
+function shootConfettiCannon() {
+    const duration = 3000;
+    const end = Date.now() + duration;
+
+    (function frame() {
+        confetti({
+            particleCount: 2,
+            angle: 60,
+            spread: 55,
+            origin: { x: 0 },
+            colors: ['#ff0000', '#ffffff', '#ff69b4']
+        });
+        
+        confetti({
+            particleCount: 2,
+            angle: 120,
+            spread: 55,
+            origin: { x: 1 },
+            colors: ['#ff0000', '#ffffff', '#ff69b4']
+        });
+
+        if (Date.now() < end) {
+            requestAnimationFrame(frame);
+        }
+    }());
+}
+</script>
+</body>
+</html>
